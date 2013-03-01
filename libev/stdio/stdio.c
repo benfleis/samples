@@ -67,7 +67,6 @@ stdout_cb(EV_P_ ev_io* watcher, int wevents)
     stdout_buf_pos = 0;
 }
 
-// Set socket fd to non-blocking mode.
 static int
 set_non_blocking(int fd)
 {
@@ -76,7 +75,7 @@ set_non_blocking(int fd)
 }
 
 int
-main(int argc, const char * const * argv)
+main(int argc, const char* const* argv)
 {
     printf("GIMME YOUR INPUTS!\n");
 
