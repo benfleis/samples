@@ -14,7 +14,7 @@ static char stdout_buf[4096];
 static size_t stdout_buf_pos = 0;
 
 static void
-log(const char* fmt, ...)
+_log(const char* fmt, ...)
 {
     va_list ap;
 
@@ -34,11 +34,11 @@ stdin_cb(EV_P_ ev_io* watcher, int revents)
 
     rv = read(STDIN_FILENO, buf, sizeof(buf));
     if (rv >= 0) {
-        log("read()'d %d bytes\n", rv);
+        _log("read()'d %d bytes\n", rv);
         if (rv == 0) {
-            log("Exiting.\n");
+            _log("Exiting on end of stream.\n");
             ev_io_stop(EV_DEFAULT_UC_ &stdin_watcher);
-            // Don't break here -- let log work its way out stderr, and the
+            // Don't break here -- let _log work its way out stderr, and the
             // event loop naturally terminate when there are no remaining
             // events.
             //ev_break(EV_A_ EVBREAK_ALL);
