@@ -1,3 +1,6 @@
 [submodule "libev/libev"]
 	path = libev/libev
 	url = https://github.com/michaelmior/libev
+[submodule "libuv/libuv"]
+	path = libuv/libuv
+	url = https://github.com/joyent/libuv

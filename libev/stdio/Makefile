@@ -1,7 +1,7 @@
 all:	stdio
 
 clean:
-	rm -f stdio stdio.o
+	rm -f stdio stdio.o stdio.dSYM
 
 CFLAGS=-g -Wall -Werror -I../libev
 LDFLAGS=-L../libev/.libs -lev
