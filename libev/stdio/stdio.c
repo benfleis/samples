@@ -10,8 +10,14 @@
 
 static ev_io stdin_watcher;
 static ev_io stdout_watcher;
-static char stdout_buf[4096];
-static size_t stdout_buf_pos = 0;
+
+// buffer all log calls in this buf, so we can event output too!
+static char log_buf[4096];
+static size_t log_buf_pos = 0;
+
+// this is only used for debugging, gdb p/s, etc.
+#define log_buf_nul_term() \
+    do { if (log_buf_pos < sizeof(log_buf)) log_buf[log_buf_pos] = 0; } while(0)
 
 static void
 _log(const char* fmt, ...)
@@ -19,11 +25,12 @@ _log(const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    stdout_buf_pos += vsnprintf(stdout_buf + stdout_buf_pos,
-        sizeof(stdout_buf) - stdout_buf_pos, fmt, ap);
-    stdout_buf[stdout_buf_pos] = 0;     // just for debugging
-    ev_io_start(EV_DEFAULT_UC_ &stdout_watcher);
+    log_buf_pos += vsnprintf(log_buf + log_buf_pos,
+        sizeof(log_buf) - log_buf_pos, fmt, ap);
     va_end(ap);
+
+    log_buf_nul_term();
+    ev_io_start(EV_DEFAULT_UC_ &stdout_watcher);    // turn on writeable check
 }
 
 static void
@@ -55,16 +62,22 @@ stdout_cb(EV_P_ ev_io* watcher, int wevents)
 {
     int rv;
 
-    rv = write(STDOUT_FILENO, stdout_buf, stdout_buf_pos);
-    if (rv == stdout_buf_pos)
+    rv = write(STDOUT_FILENO, log_buf, log_buf_pos);
+    if (rv == log_buf_pos) {
+        // whole buf written, reset buf, clear writeable check
         ev_io_stop(EV_DEFAULT_UC_ &stdout_watcher);
-    else if (rv >= 0)
-        memmove(stdout_buf, stdout_buf + stdout_buf_pos, stdout_buf_pos);
+        log_buf_pos = 0;
+    }
+    else if (rv >= 0) {
+        // partial buf written, shift and adjust pos (writeable check intact)
+        memmove(log_buf, log_buf + rv, log_buf_pos - rv);
+        log_buf_pos -= rv;
+    }
     else {
         fprintf(stderr, "write() returned error: %s", strerror(errno));
         exit(1);
     }
-    stdout_buf_pos = 0;
+    log_buf_nul_term();
 }
 
 static int
