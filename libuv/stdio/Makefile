@@ -1,7 +1,7 @@
 all:	stdio
 
 clean:
-	rm -f stdio stdio.o stdio.dSYM
+	rm -rf stdio stdio.o stdio.dSYM
 
 CFLAGS=-g -Wall -Werror -I../libuv/include
 LDFLAGS=-L../libuv -luv

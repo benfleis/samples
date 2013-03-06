@@ -1,7 +1,7 @@
 all:	pthread
 
 clean:
-	rm -f pthread pthread.o pthread.dSYM
+	rm -rf pthread pthread.o pthread.dSYM
 
 CFLAGS=-g -Wall -Werror -I../libev
 LDFLAGS=-L../libev/.libs -lev -lpthread
