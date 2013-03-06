@@ -59,7 +59,7 @@ int
 main(int argc, const char* const* argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "Timeout value missing.\n%s <timeout>\n", argv[0]);
+        fprintf(stderr, "Timeout value missing.\n%s <timeout_ms>\n", argv[0]);
         return -1;
     }
     timeout = atoi(argv[1]);

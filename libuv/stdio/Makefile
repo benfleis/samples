@@ -1,9 +1,9 @@
-all:	stdio
+all:	stdio_poll
 
 clean:
-	rm -rf stdio stdio.o stdio.dSYM
+	rm -rf stdio_poll stdio_poll.o stdio.dSYM
 
-CFLAGS=-g -Wall -Werror -I../libuv/include
-LDFLAGS=-L../libuv -luv
+CFLAGS := -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -g -Wall -Werror -I../libuv/include
+LDFLAGS := -L../libuv -luv -framework Foundation -framework CoreServices
 #LDFLAGS=../libuv/libuv.a
 
