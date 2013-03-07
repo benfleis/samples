@@ -18,7 +18,22 @@ struct http_io {
     pthread_t io_thread;
     pthread_mutex_t io_mutex;
     uv_loop_t* loop;
+
+    http_io_response_cb response_cb;
 };
+
+// ----------------------------------------------------------------------------
+
+static int _signal_cb(uint64_t index64)
+{
+    //uint32_t index = index64 & 0xffffffff;
+
+    // fetch context from hash table
+    // call user callback on returned data, if specified.
+    //
+
+    return 0;
+}
 
 // ----------------------------------------------------------------------------
 
@@ -80,6 +95,14 @@ http_io_destroy(http_io_t** ctx_handle)
     }
     free(*ctx_handle);
     *ctx_handle = NULL;
+}
+
+
+void
+http_io_signal_get(http_io_t* ctx, int* fdp, http_io_signal_cb* cbp)
+{
+    *fdp = ctx->signal_pair[0];
+    *cbp = _signal_cb;
 }
 
 // ----------------------------------------------------------------------------
