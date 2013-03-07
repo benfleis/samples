@@ -6,10 +6,9 @@
 // (c) 2013 enthusiasticgeek for stack overflow
 // Free to distribute and improve the code. Leave credits intact
 
-#include <stdio.h> // for puts
-#include <stdlib.h>
-
 #include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "uv.h"
 
@@ -28,7 +27,7 @@ void*
 run_other_thread(void* args)
 {
     printf("Running secondary: uv_run(loop_for_async_thread, 0);\n");
-    uv_run(loop_for_async_thread, 0);
+    uv_run(loop_for_async_thread, UV_RUN_DEFAULT);
     return NULL;
 }
 
