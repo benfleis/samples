@@ -4,6 +4,6 @@ libuv
 first build libuv:
 
         git submodule update --init
-        cd libuv
+        cd ../third-party/libuv
         make
 

@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <sys/types.h>
+
 typedef struct http_io http_io_t;
 
 http_io_t* http_io_create(void);
