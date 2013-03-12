@@ -40,13 +40,18 @@ struct request {
 };
 
 typedef std::map<uint32_t, request> request_by_id_t;
+
 struct http_io {
     int signal_pair[2];     // socketpair fds; [0]=main_thread, [1]=io_thread
 #define _MAIN_THREAD        0
 #define _IO_THREAD          1
-    pthread_t io_thread;
-    uv_loop_t* loop;
 
+// if _SIGNAL_CLOSE is sent on the socketpair, handle remaining data then close
+#define _SIGNAL_CLOSE       0x8000000
+
+    pthread_t io_thread;
+    uv_loop_t* io_loop;
+    uv_async_t io_loop_watcher;
     uv_poll_t signal_io_thread_read_watcher;
     //uv_poll_t signal_write_watcher;
 
@@ -71,6 +76,7 @@ struct http_io {
 // prototypes for the major callbacks, so we can order how we want
 //
 
+void io_loop_cb(uv_async_t* watcher, int revents);
 void signal_read_cb(uv_poll_t* watcher, int status, int revents);
 
 void _http_connect_cb(uv_connect_t* watcher, int status);
@@ -103,7 +109,7 @@ static void*
 _run_io_thread(void* args)
 {
     http_io* ctx = static_cast<http_io*>(args);
-    uv_run(ctx->loop, UV_RUN_DEFAULT);
+    uv_run(ctx->io_loop, UV_RUN_DEFAULT);
     return NULL;
 }
 
@@ -112,6 +118,14 @@ set_non_blocking(int fd)
 {
   int val = fcntl(fd, F_GETFL, 0);
   return val == -1 ? -1 : fcntl(fd, F_SETFL, val | O_NONBLOCK);
+}
+
+// ----------------------------------------------------------------------------
+
+void
+io_loop_cb(uv_async_t* watcher, int revents)
+{
+    // NOOP
 }
 
 // ----------------------------------------------------------------------------
@@ -210,7 +224,7 @@ signal_read_cb(uv_poll_t* watcher, int status, int revents)
     int32_t len = read(ctx->signal_pair[_IO_THREAD], &id, sizeof(id));
 
     if (len < 0) {
-        if (uv_last_error(ctx->loop).code == UV_EOF) {
+        if (uv_last_error(ctx->io_loop).code == UV_EOF) {
             fprintf(stderr, "  uv_poll_stop(signal);\n");
             uv_poll_stop(watcher);
         }
@@ -261,20 +275,23 @@ http_io_create(const char* ip, uint16_t port)
     // easy stuff
     rv->ip = ip;
     rv->port = port;
-    rv->loop = uv_loop_new();
-    rv->loop->data = rv;                // save http_io ctx for later
-    assert(rv->loop);
+    rv->io_loop = uv_loop_new();
+    rv->io_loop->data = rv;                // save http_io ctx for later
+    assert(rv->io_loop);
     pthread_mutex_init(&rv->requests_mutex, NULL);
+
+    // use async primitive for kicking the io thread loop when needed
+    uv_async_init(rv->io_loop, &rv->io_loop_watcher, io_loop_cb);
 
     // setup socket pair, then setup read/write checks for io_thread side
     int res = socketpair(PF_LOCAL, SOCK_DGRAM, 0, rv->signal_pair);
     assert(res == 0);
     set_non_blocking(rv->signal_pair[_IO_THREAD]);
-    uv_poll_init(rv->loop, &rv->signal_io_thread_read_watcher, rv->signal_pair[_IO_THREAD]);
-    //uv_poll_init(rv->loop, &rv->signal_write_watcher, rv->signal_pair[_IO_THREAD]);
+    uv_poll_init(rv->io_loop, &rv->signal_io_thread_read_watcher, rv->signal_pair[_IO_THREAD]);
+    //uv_poll_init(rv->io_loop, &rv->signal_write_watcher, rv->signal_pair[_IO_THREAD]);
 
     // connect to endpoint
-    uv_tcp_init(rv->loop, &rv->http);
+    uv_tcp_init(rv->io_loop, &rv->http);
     struct sockaddr_in dst = uv_ip4_addr(ip, port);
     uv_tcp_connect(&rv->http_connect, &rv->http, dst, _http_connect_cb);
 
@@ -294,19 +311,19 @@ http_io_create(const char* ip, uint16_t port)
 //{
 //}
 
-static void
+void
 _print_watcher(uv_handle_t* handle, void* arg)
 {
 // define UV__HANDLE_ACTIVE    0x40
-    if (handle->flags & 0x40)
-        fprintf(stderr, "waiting on handle of type %d\n", handle->type);
+    fprintf(stderr, "handle of type %d%s\n", handle->type, handle->flags & 0x40 ? " ACTIVE" : "");
 }
 
-static void
+void
 _print_remaining_watchers(http_io* ctx)
 {
-    uv_walk(ctx->loop, _print_watcher, 0);
+    uv_walk(ctx->io_loop, _print_watcher, 0);
 }
+
 
 void
 http_io_destroy(http_io* ctx)
@@ -315,19 +332,27 @@ http_io_destroy(http_io* ctx)
     if (ctx) {
         sleep(2);
         fprintf(stderr, "http_io_destroy(...) {\n");
-        //uv_poll_stop(&ctx->signal_io_thread_read_watcher);
+        uv_poll_stop(&ctx->signal_io_thread_read_watcher);
         close(ctx->signal_pair[_MAIN_THREAD]);
+        close(ctx->signal_pair[_IO_THREAD]);
         //uv_poll_stop(&ctx->signal_write_watcher);
         // XXX evil, crosses thread line.
         //if (ctx->http.loop)
         uv_shutdown(&ctx->shutdown, (uv_stream_t*)&ctx->http, _http_shutdown_cb);
-        for (int i = 0; i < 10; i++) {
+        uv_async_send(&ctx->io_loop_watcher);
+        /*
+        for (int i = 0; i < 4; i++) {
             _print_remaining_watchers(ctx);
+            uv_async_send(&ctx->io_loop_watcher);
+            if (i == 1)
+                uv_close((uv_handle_t*)&ctx->io_loop_watcher, NULL);
             sleep(1);
         }
+        */
+        uv_close((uv_handle_t*)&ctx->io_loop_watcher, NULL);
         pthread_join(ctx->io_thread, NULL);
         pthread_mutex_destroy(&ctx->requests_mutex);
-        uv_loop_delete(ctx->loop);
+        uv_loop_delete(ctx->io_loop);
         memset(ctx, 0, sizeof(*ctx));
         free(ctx);
         fprintf(stderr, "}\n");
@@ -358,6 +383,10 @@ http_io_send(http_io* ctx, void* query, uint32_t query_len, http_io_response_cb 
     const int line_len = sizeof(fmt) + query_len - 1;   // -2 from %s, +1 for nul term
     char* line = new char[line_len];            // XXX not deleted
     snprintf(line, line_len, "GET %s HTTP/1.1\r\n\r\n", query);
+
+    // increment ID, but never use first bit value
+    if (++id & 0x80000000)
+        id = 0;
 
     // package and insert into request map, then write actual signaling
     // message w/ id
