@@ -62,9 +62,8 @@ struct http_io {
 
     const char* ip;
     uint16_t port;
-    uv_tcp_t socket;
-    uv_connect_t connect;
-    uv_stream_t* http;
+    uv_tcp_t http;
+    uv_connect_t http_connect;
     uv_shutdown_t shutdown;
 };
 
@@ -73,6 +72,12 @@ struct http_io {
 //
 
 static void signal_read_cb(uv_poll_t* watcher, int status, int revents);
+
+static void _http_connect_cb(uv_connect_t* watcher, int status);
+static void _http_read_cb(uv_stream_t* http, ssize_t res, uv_buf_t buf);
+static void _http_shutdown_cb(uv_shutdown_t* shutdown, int status);
+static void _http_close_cb(uv_handle_t* handle);
+static uv_buf_t _http_new_buf(uv_handle_t* _ignored, size_t suggested_len);
 
 
 // ----------------------------------------------------------------------------
@@ -112,13 +117,6 @@ set_non_blocking(int fd)
 }
 
 // ----------------------------------------------------------------------------
-
-static void _http_connect_cb(uv_connect_t* watcher, int status);
-static void _http_read_cb(uv_stream_t* http, ssize_t res, uv_buf_t buf);
-static void _http_shutdown_cb(uv_shutdown_t* shutdown, int status);
-static void _http_close_cb(uv_handle_t* handle);
-static uv_buf_t _http_new_buf(uv_handle_t* _ignored, size_t suggested_len);
-
 
 static uv_buf_t
 _http_new_buf(uv_handle_t* _ignored, size_t suggested_len)
@@ -161,8 +159,8 @@ static void
 _http_connect_cb(uv_connect_t* watcher, int status)
 {
     fprintf(stderr, "_http_connect_cb(%d)\n", status);
-    http_io* ctx = container_of(watcher, http_io, connect);
-    ctx->http = watcher->handle;
+    http_io* ctx = container_of(watcher, http_io, http_connect);
+    assert((void*)watcher->handle == (void*)&ctx->http);
 
     // once we're connected, attach the signal read handler
     uv_poll_start(&ctx->signal_read_watcher, UV_READABLE, signal_read_cb);
@@ -173,7 +171,7 @@ _http_shutdown_cb(uv_shutdown_t* shutdown, int status)
 {
     fprintf(stderr, "_http_shutdown_cb(%d)", status);
     http_io* ctx = container_of(shutdown, http_io, shutdown);
-    uv_close((uv_handle_t*)&ctx->socket, _http_close_cb);
+    uv_close((uv_handle_t*)&ctx->http, _http_close_cb);
 }
 
 static void
@@ -233,8 +231,8 @@ signal_read_cb(uv_poll_t* watcher, int status, int revents)
             http_write_ctx* req = new http_write_ctx();
             req->buf = uv_buf_init(new char[reqi->second.len], reqi->second.len);
             memcpy(req->buf.base, reqi->second.msg, reqi->second.len);
-            uv_read_start(ctx->http, _http_new_buf, _http_read_cb);
-            uv_write(&req->req, ctx->http, &req->buf, 1, http_write_cb);
+            uv_read_start((uv_stream_t*)&ctx->http, _http_new_buf, _http_read_cb);
+            uv_write(&req->req, (uv_stream_t*)&ctx->http, &req->buf, 1, http_write_cb);
         }
     }
 }
@@ -273,9 +271,9 @@ http_io_create(const char* ip, uint16_t port)
     //uv_poll_init(rv->loop, &rv->signal_write_watcher, rv->signal_pair[_IO_THREAD]);
 
     // connect to endpoint
-    uv_tcp_init(rv->loop, &rv->socket);
+    uv_tcp_init(rv->loop, &rv->http);
     struct sockaddr_in dst = uv_ip4_addr(ip, port);
-    uv_tcp_connect(&rv->connect, &rv->socket, dst, _http_connect_cb);
+    uv_tcp_connect(&rv->http_connect, &rv->http, dst, _http_connect_cb);
 
     // finish by instantiating run thread
     res = pthread_create(&rv->io_thread, NULL, _run_io_thread, rv);
@@ -314,11 +312,11 @@ http_io_destroy(http_io** ctx_handle)
     if (ctx) {
         sleep(2);
         fprintf(stderr, "http_io_destroy(...) {\n");
-        if (ctx->http)
-            uv_shutdown(&ctx->shutdown, (uv_handle_t*)ctx->socket, _http_shutdown_cb);
+        if (ctx->http.loop)
+            uv_shutdown(&ctx->shutdown, (uv_stream_t*)&ctx->http, _http_shutdown_cb);
         close(ctx->signal_pair[_MAIN_THREAD]);
-        close(ctx->signal_pair[_IO_THREAD]);
-        uv_poll_stop(&ctx->signal_read_watcher);
+        //close(ctx->signal_pair[_IO_THREAD]);
+        //uv_poll_stop(&ctx->signal_read_watcher);
         //uv_poll_stop(&ctx->signal_write_watcher);
         _print_remaining_watchers(ctx);
         pthread_join(ctx->io_thread, NULL);
