@@ -41,7 +41,7 @@ main(int argc, const char* const* argv)
     assert(res == 0);
     */
 
-    http_io_destroy(&http);
+    http_io_destroy(http);
 
     return 0;
 }

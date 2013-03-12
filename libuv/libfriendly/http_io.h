@@ -6,7 +6,7 @@ extern "C" {
 typedef struct http_io http_io_t;
 
 http_io_t* http_io_create(const char* ip, uint16_t port);
-void http_io_destroy(http_io_t**);
+void http_io_destroy(http_io_t*);
 
 //
 // Signaling is presently simple: select on fd, read a uint64_t
