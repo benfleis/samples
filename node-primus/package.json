@@ -1,0 +1,36 @@
+{
+  "name": "primus-sample",
+  "version": "0.0.1",
+  "author": {
+    "name": "ben fleis",
+    "email": "ben@monkey.org"
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:benfleis/samples.git"
+  },
+
+  "engines": {
+    "node":             "0.10.x     >=0.10.25",
+    "npm":              "1.4.x      >1.4.3"
+  },
+
+  "dependencies": {
+    "primus":           "2.0.x      >=2.0.4",
+    "primus-rooms":     "3.0.x      >=3.0.1",
+    "ws":               "0.4.x      >=0.4.31"
+  },
+
+  "devDependencies": {
+    "chai":             "1.9.x",
+    "coffee-script":    "1.7.x",
+    "mocha":            "1.17.x",
+    "sinon":            "*"
+  },
+
+  "scripts": {
+      "start": "make run",
+      "test": "make test"
+  }
+}
