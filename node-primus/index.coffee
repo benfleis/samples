@@ -1,1 +1,1 @@
-src/simple.coffee
+src/namespaces.coffee

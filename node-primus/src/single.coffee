@@ -2,7 +2,6 @@ http = require 'http'
 util = require 'util'
 
 Primus = require 'primus'
-PrimusRooms = require 'primus-rooms'
 
 #
 # create single trivial primus namespace with single client
@@ -31,12 +30,6 @@ main = (opts) ->
     clientCheck = () ->
         Socket = Primus.createSocket { pathname: '/foo' }
         socket = Socket 'ws://localhost:8080', {}
-           #reconnect:
-           #    minDelay: 10
-           #    maxDelay: 60000
-           #    retries: Infinity
-           #strategy: 'disconnect, online, timeout'
-           #queueSize: Infinity
 
         # useful debugging snippet logs all event emissions
         #emit = socket.emit
