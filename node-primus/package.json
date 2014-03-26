@@ -18,7 +18,9 @@
 
   "dependencies": {
     "primus":           "2.0.x      >=2.0.4",
+    "primus-multiplex": "2.2.x      >=2.2.2",
     "primus-rooms":     "3.0.x      >=3.0.1",
+    "primus.io":        "3.1.x      >=3.1.0",
     "ws":               "0.4.x      >=0.4.31"
   },
 

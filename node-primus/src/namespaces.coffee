@@ -10,8 +10,8 @@ Primus = require 'primus'
 main = (opts) ->
     httpServer = http.createServer()
 
-    fooServer = new Primus httpServer, { pathname: '/foo', close: false }
-    barServer = new Primus httpServer, { pathname: '/bar', close: false }
+    fooServer = new Primus httpServer, { pathname: '/foo' }
+    barServer = new Primus httpServer, { pathname: '/bar' }
 
     endCount = 2
     for server in [fooServer, barServer]

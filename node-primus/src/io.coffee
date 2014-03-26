@@ -1,7 +1,7 @@
 http = require 'http'
 util = require 'util'
 
-Primus = require 'primus'
+Primus = require 'primus.io'
 
 #
 # create single trivial primus namespace with single client
@@ -15,12 +15,13 @@ main = (opts) ->
     foo.on 'connection', (spark) ->
         console.log 'spark.%s CONNECTION [%s:%s]', spark.id, spark.address.ip, spark.address.port
 
-        spark.on 'data', (data) ->
-            console.log 'spark.%s DATA: %s', spark.id, util.inspect data
-            # calling w/ close: true kills the underlying socket.
-            foo.end { close: true, timeout: 100 }
+        spark.on 'channel1', (data) ->
+            console.log 'spark.%s #channel1: %s', spark.id, util.inspect data
+            spark.send 'channel1', 'response'
+            spark.send 'log', 'channel1 xaction'
 
-        spark.write 'Hello, client.'
+        spark.on 'log', (data) ->
+            console.log 'spark.%s #log: %s', spark.id, util.inspect data
 
     foo.on 'disconnection', (spark) -> console.log 'spark.%s DISCONNECTION', spark.id
     foo.on 'error', (err) -> console.error 'primus ERROR: %s', err.toString()
@@ -40,10 +41,18 @@ main = (opts) ->
         socket.on 'open', () -> console.log 'client OPEN'
         socket.on 'end', () -> console.log 'client END'
         socket.on 'reconnecting', () -> console.log 'client RECONNECTING'
-        socket.on 'data', (data) -> console.log 'client DATA %s', data.toString()
+        #socket.on 'data', (data) -> console.log 'client DATA %s', data.toString()
 
-        socket.write { goo: 'balls' }
-
+        #socket.write { goo: 'balls' }
+        counter = 2
+        socket.on 'open', () ->
+            socket.send 'channel1', 'got here.'
+            socket.on 'channel1', (data) ->
+                console.log 'client #channel1 %s', data.toString()
+                socket.send 'log', 'client saw ' + data.toString()
+            socket.on 'log', (data) ->
+                console.log 'client #log %s', data.toString()
+                foo.end()
 
     server.listen 8080, clientCheck
 
