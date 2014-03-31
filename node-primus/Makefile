@@ -14,7 +14,7 @@ setup:
 	npm install .
 
 compile:
-	${COFFEE} -wmc -o lib/src src
+	${COFFEE} -wmc -o lib .
 
 debug:
 	${COFFEE_DEBUG} index.coffee
