@@ -1,9 +1,9 @@
 all:	stdio
 
 clean:
-	rm -f stdio stdio.o stdio.dSYM
+	rm -rf stdio stdio.o stdio.dSYM
 
-CFLAGS=-g -Wall -Werror -I../libev
-LDFLAGS=-L../libev/.libs -lev
+CFLAGS=-g -Wall -Werror -I../../third-party/libev
+LDFLAGS=-L../../third-party/libev/.libs -lev
 #LDFLAGS=../libev/.libs/libev.a
 

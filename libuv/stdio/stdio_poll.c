@@ -8,7 +8,6 @@
 
 #include "uv.h"
 
-static uv_loop_t* loop;
 static uv_poll_t stdin_watcher;
 static uv_poll_t stdout_watcher;
 
@@ -72,7 +71,7 @@ stdin_cb(uv_poll_t* watcher, int status, int revents)
             // Don't break here -- let _log work its way out stderr, and the
             // event loop naturally terminate when there are no remaining
             // events.
-            //uv_stop(loop);
+            //uv_break(uv_A_ EVBREAK_ALL);
         }
     }
     else if (errno != EAGAIN && errno != EINPROGRESS) {
@@ -97,7 +96,7 @@ main(int argc, const char* const* argv)
     set_non_blocking(STDIN_FILENO);
     set_non_blocking(STDOUT_FILENO);
 
-    loop = uv_default_loop();
+    uv_loop_t* loop = uv_default_loop();
     uv_poll_init(loop, &stdin_watcher, STDIN_FILENO);
     uv_poll_init(loop, &stdout_watcher, STDOUT_FILENO);
     uv_poll_start(&stdin_watcher, UV_READABLE, stdin_cb);

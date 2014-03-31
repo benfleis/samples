@@ -1,6 +1,6 @@
-[submodule "libev/libev"]
-	path = libev/libev
+[submodule "third-party/libev"]
+	path = third-party/libev
 	url = https://github.com/michaelmior/libev
-[submodule "libuv/libuv"]
-	path = libuv/libuv
+[submodule "third-party/libuv"]
+	path = third-party/libuv
 	url = https://github.com/joyent/libuv
